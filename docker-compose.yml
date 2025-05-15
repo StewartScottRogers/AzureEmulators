@@ -3,12 +3,6 @@
 ###############################################################################
 services:
 
-  testconsole:
-    image: testconsole
-    build:
-      context: .
-      dockerfile: TestConsole/Dockerfile
-
   ###########################################################################
   # 1. Azurite – Blob, Queue, Table Storage
   ###########################################################################
@@ -123,6 +117,31 @@ services:
       timeout: 15s
       retries: 3
       start_period: 90s
+
+  ###########################################################################
+  # 4. Demo REST API Service
+  ###########################################################################
+  demo-rest-api:
+    image: demo-rest-api
+    build:
+      context: ./Demo.RestApi
+      dockerfile: Dockerfile
+    container_name: demo-rest-api
+    restart: unless-stopped
+
+    environment:
+      AZURE_STORAGE_CONNECTION_STRING: "UseDevelopmentStorage=true"
+      SERVICE_BUS_CONNECTION_STRING: "Endpoint=sb://localhost/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=yourkey"
+      COSMOS_DB_ENDPOINT: "https://localhost:8081"
+      COSMOS_DB_KEY: "yourcosmoskey"
+
+    ports:
+      - "5000:5000"   # REST API
+
+    depends_on:
+      - azure-storage-emulator
+      - azure-servic-bus-emulator
+      - cosmos-emulator
 
 ###############################################################################
 # Named volumes – keep emulator state between container restarts
