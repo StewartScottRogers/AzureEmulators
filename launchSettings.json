@@ -1,0 +1,15 @@
+{
+  "profiles": {
+    "Docker Compose": {
+      "commandName": "DockerCompose",
+      "commandVersion": "1.0",
+      "serviceActions": {
+        "testconsole": "StartDebugging",
+        "cosmos-emulator": "StartWithoutDebugging",
+        "azure-storage-emulator": "StartWithoutDebugging",
+        "azure-sql-edge-store-emulator": "StartWithoutDebugging",
+        "azure-servic-bus-emulator": "StartWithoutDebugging"
+      }
+    }
+  }
+}

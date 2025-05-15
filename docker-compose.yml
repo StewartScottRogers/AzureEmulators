@@ -1,0 +1,135 @@
+﻿###############################################################################
+# Azure emulators – Blob/Queue/Table, Service Bus, Cosmos DB
+###############################################################################
+services:
+
+  testconsole:
+    image: testconsole
+    build:
+      context: .
+      dockerfile: TestConsole/Dockerfile
+
+  ###########################################################################
+  # 1. Azurite – Blob, Queue, Table Storage
+  ###########################################################################
+  azure-storage-emulator:
+    image: mcr.microsoft.com/azure-storage/azurite:latest
+    container_name: azurite
+    restart: unless-stopped
+
+    # Pre‑create the well‑known dev account so SDKs can connect with the
+    # classic "UseDevelopmentStorage=true" string.
+    environment:
+      AZURITE_ACCOUNTS: >
+        devstoreaccount1:Eby8vdM02xNoGDHtN2TQEByYX64NJ1DGn2RTymGBVqI=:http;https
+
+    # Run all three services and persist data in /data.
+    command: >
+      azurite
+        --location /data
+        --blobHost 0.0.0.0 --blobPort 10000
+        --queueHost 0.0.0.0 --queuePort 10001
+        --tableHost 0.0.0.0 --tablePort 10002
+        --loose
+        --skipApiVersionCheck
+
+    ports:
+      - "10000:10000"   # Blob
+      - "10001:10001"   # Queue
+      - "10002:10002"   # Table
+
+    volumes:
+      - azurite_data:/data
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:10000/devstoreaccount1?comp=list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  ###########################################################################
+  # 2. Service Bus Emulator  (preview)
+  #    Needs a companion SQL Edge instance for metadata storage.
+  ###########################################################################
+  azure-servic-bus-emulator:
+    image: mcr.microsoft.com/azure-messaging/servicebus-emulator:latest
+    container_name: azure-servic-bus-emulator
+    depends_on:
+      - azure-sql-edge-store-emulator
+    restart: unless-stopped
+
+    environment:
+      SQL_SERVER: azure-sql-edge-store-emulator             # container‑local DNS name
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${SB_SQL_PASSWORD:-Str0ngPa55w0rd!}"  # inject via .env for CI
+
+    ports:
+      - "5672:5672"   # AMQP 1.0
+      - "5300:5300"   # /health endpoint
+
+    volumes:
+      - sbemulator_cfg:/ServiceBus_Emulator/ConfigFiles     # optional custom Config.json
+      - sbemulator_logs:/home/app/EmulatorLogs
+
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:5300/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Companion SQL Edge store (internal only)
+  azure-sql-edge-store-emulator:
+    image: mcr.microsoft.com/azure-sql-edge:latest
+    container_name: azure-sql-edge-store-emulator
+    restart: unless-stopped
+
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${SB_SQL_PASSWORD:-Str0ngPa55w0rd!}"
+
+    volumes:
+      - sb_sql_data:/var/opt/mssql     # durable queue metadata
+    expose:
+      - "1433"   # only to sibling containers; no host port mapped
+
+  ###########################################################################
+  # 3. Cosmos DB Emulator – NoSQL (Core) API
+  ###########################################################################
+  cosmos-emulator:
+    image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:latest
+    container_name: cosmos-emulator
+    privileged: true                     # required by the emulator kernel modules
+    restart: unless-stopped
+
+    environment:
+      AZURE_COSMOS_EMULATOR_PARTITION_COUNT: "4"
+      AZURE_COSMOS_EMULATOR_ENABLE_DATA_PERSISTENCE: "true"
+      AZURE_COSMOS_EMULATOR_ENABLE_TELEMETRY: "false"
+      AZURE_COSMOS_EMULATOR_IP_ADDRESS_OVERRIDE: "localhost"
+      ACCEPT_EULA: "Y"
+
+    ports:
+      - "8081:8081"                       # HTTPS Gateway
+      - "10251-10254:10251-10254"         # Direct TCP (optional – comment out if not needed)
+
+    volumes:
+      - cosmos_data:/databases
+
+    healthcheck:
+      test: ["CMD", "curl", "-k", "https://localhost:8081/_explorer/emulator.pem"]
+      interval: 45s
+      timeout: 15s
+      retries: 3
+      start_period: 90s
+
+###############################################################################
+# Named volumes – keep emulator state between container restarts
+###############################################################################
+volumes:
+  azurite_data:
+  sb_sql_data:
+  sbemulator_cfg:
+  sbemulator_logs:
+  cosmos_data:
