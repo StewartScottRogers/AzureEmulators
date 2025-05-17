@@ -7,11 +7,10 @@
       "composeLaunchServiceName": "demo-rest-api",
       "serviceActions": {
         "demo-rest-api": "StartDebugging",
-        "cosmos-emulator": "StartWithoutDebugging",
         "azure-storage-emulator": "StartWithoutDebugging",
         "azure-sql-edge-store-emulator": "StartWithoutDebugging",
         "azure-servic-bus-emulator": "StartWithoutDebugging",
-        "iot-telemetry-simulator": "StartWithoutDebugging"
+        "azure-cosmos-database-emulator": "StartWithoutDebugging"
       }
     }
   }

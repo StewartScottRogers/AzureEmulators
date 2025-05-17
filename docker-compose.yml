@@ -1,31 +1,14 @@
 ﻿###############################################################################
-# Azure emulators – Blob/Queue/Table, Service Bus, Cosmos DB, IoT Telemetry Simulator
+# Azure emulators – Blob/Queue/Table, Service Bus, Cosmos DB
 ###############################################################################
 services:
-
-  ###########################################################################
-  # 0. Azure IoT Telemetry Simulator
-  ###########################################################################
-  iot-telemetry-simulator:
-    image: mcr.microsoft.com/oss/azure-samples/azureiot-telemetrysimulator:latest
-    container_name: iot-telemetry-simulator
-    ports:
-      - "9000:80"  # Web UI accessible at http://localhost:9000
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Production
-      - ApplicationSettings__Simulation__IotHubConnectionString=HostName=your-iothub.azure-devices.net;SharedAccessKeyName=iothubowner;SharedAccessKey=yourkey
-      - ApplicationSettings__Simulation__DeviceModelsFolder=DeviceModels
-      - ApplicationSettings__Simulation__ScriptsFolder=Scripts
-    volumes:
-      - ./DeviceModels:/app/DeviceModels
-      - ./Scripts:/app/Scripts
 
   ###########################################################################
   # 1. Azurite – Blob, Queue, Table Storage
   ###########################################################################
   azure-storage-emulator:
     image: mcr.microsoft.com/azure-storage/azurite:latest
-    container_name: azurite
+    container_name: azure-storage-emulator
     restart: unless-stopped
 
     # Pre‑create the well‑known dev account so SDKs can connect with the
@@ -50,7 +33,7 @@ services:
       - "10002:10002"   # Table
 
     volumes:
-      - azurite_data:/data
+      - azure_storage_emulator_data:/data
 
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:10000/devstoreaccount1?comp=list"]
@@ -80,8 +63,8 @@ services:
       - "5300:5300"   # /health endpoint
 
     volumes:
-      - sbemulator_cfg:/ServiceBus_Emulator/ConfigFiles     # optional custom Config.json
-      - sbemulator_logs:/home/app/EmulatorLogs
+      - azure_servic_bus_emulator_configuration:/ServiceBus_Emulator/ConfigFiles     # optional custom Config.json
+      - azure_servic_bus_emulator_logs:/home/app/EmulatorLogs
 
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:5300/health"]
@@ -101,16 +84,16 @@ services:
       MSSQL_SA_PASSWORD: "${SB_SQL_PASSWORD:-Str0ngPa55w0rd!}"
 
     volumes:
-      - sb_sql_data:/var/opt/mssql     # durable queue metadata
+      - azure_sql_edge_store_emulator_data:/var/opt/mssql     # durable queue metadata
     expose:
       - "1433"   # only to sibling containers; no host port mapped
 
   ###########################################################################
   # 3. Cosmos DB Emulator – NoSQL (Core) API
   ###########################################################################
-  cosmos-emulator:
+  azure-cosmos-database-emulator:
     image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:latest
-    container_name: cosmos-emulator
+    container_name: azure-cosmos-database-emulator
     privileged: true                     # required by the emulator kernel modules
     restart: unless-stopped
 
@@ -126,7 +109,7 @@ services:
       - "10251-10254:10251-10254"         # Direct TCP (optional – comment out if not needed)
 
     volumes:
-      - cosmos_data:/databases
+      - azure_cosmos_database_emulator_data:/databases
 
     healthcheck:
       test: ["CMD", "curl", "-k", "https://localhost:8081/_explorer/emulator.pem"]
@@ -156,10 +139,9 @@ services:
       - "5000:5000"   # REST API
 
     depends_on:
-      - iot-telemetry-simulator
       - azure-storage-emulator
       - azure-servic-bus-emulator
-      - cosmos-emulator
+      - azure-cosmos-database-emulator
       - azure-sql-edge-store-emulator
 
 
@@ -167,9 +149,8 @@ services:
 # Named volumes – keep emulator state between container restarts
 ###############################################################################
 volumes:
-  azurite_data:
-  sb_sql_data:
-  sbemulator_cfg:
-  sbemulator_logs:
-  cosmos_data:
-  simulator_data:
+  azure_storage_emulator_data:
+  azure_sql_edge_store_emulator_data:
+  azure_servic_bus_emulator_configuration:
+  azure_servic_bus_emulator_logs:
+  azure_cosmos_database_emulator_data:
