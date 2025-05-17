@@ -1,7 +1,25 @@
 ﻿###############################################################################
-# Azure emulators – Blob/Queue/Table, Service Bus, Cosmos DB
+# Azure emulators – Blob/Queue/Table, Service Bus, Cosmos DB, IoT Telemetry Simulator
 ###############################################################################
 services:
+
+  ###########################################################################
+  # 5. Azure IoT Telemetry Simulator
+  ###########################################################################
+  azureiot-telemetrysimulator:
+    image: ghcr.io/azure/iot-telemetry-simulator:latest
+    container_name: azureiot-telemetrysimulator
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Production"
+      # Add other environment variables as needed, e.g. connection strings
+    ports:
+      - "8888:8888"   # Web UI
+    volumes:
+      - simulator_data:/app/data
+    # Optionally, add depends_on if you want to wait for other services
+    # depends_on:
+    #   - demo-rest-api
 
   ###########################################################################
   # 1. Azurite – Blob, Queue, Table Storage
@@ -139,9 +157,12 @@ services:
       - "5000:5000"   # REST API
 
     depends_on:
+      - azureiot-telemetrysimulator
       - azure-storage-emulator
       - azure-servic-bus-emulator
       - cosmos-emulator
+      - azure-sql-edge-store-emulator
+
 
 ###############################################################################
 # Named volumes – keep emulator state between container restarts
@@ -152,3 +173,4 @@ volumes:
   sbemulator_cfg:
   sbemulator_logs:
   cosmos_data:
+  simulator_data:
