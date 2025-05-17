@@ -4,22 +4,21 @@
 services:
 
   ###########################################################################
-  # 5. Azure IoT Telemetry Simulator
+  # 0. Azure IoT Telemetry Simulator
   ###########################################################################
-  azureiot-telemetrysimulator:
-    image: ghcr.io/azure/iot-telemetry-simulator:latest
-    container_name: azureiot-telemetrysimulator
-    restart: unless-stopped
-    environment:
-      ASPNETCORE_ENVIRONMENT: "Production"
-      # Add other environment variables as needed, e.g. connection strings
+  iot-telemetry-simulator:
+    image: mcr.microsoft.com/oss/azure-samples/azureiot-telemetrysimulator:latest
+    container_name: iot-telemetry-simulator
     ports:
-      - "8888:8888"   # Web UI
+      - "9000:80"  # Web UI accessible at http://localhost:9000
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ApplicationSettings__Simulation__IotHubConnectionString=HostName=your-iothub.azure-devices.net;SharedAccessKeyName=iothubowner;SharedAccessKey=yourkey
+      - ApplicationSettings__Simulation__DeviceModelsFolder=DeviceModels
+      - ApplicationSettings__Simulation__ScriptsFolder=Scripts
     volumes:
-      - simulator_data:/app/data
-    # Optionally, add depends_on if you want to wait for other services
-    # depends_on:
-    #   - demo-rest-api
+      - ./DeviceModels:/app/DeviceModels
+      - ./Scripts:/app/Scripts
 
   ###########################################################################
   # 1. Azurite – Blob, Queue, Table Storage
@@ -157,7 +156,7 @@ services:
       - "5000:5000"   # REST API
 
     depends_on:
-      - azureiot-telemetrysimulator
+      - iot-telemetry-simulator
       - azure-storage-emulator
       - azure-servic-bus-emulator
       - cosmos-emulator

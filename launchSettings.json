@@ -11,7 +11,7 @@
         "azure-storage-emulator": "StartWithoutDebugging",
         "azure-sql-edge-store-emulator": "StartWithoutDebugging",
         "azure-servic-bus-emulator": "StartWithoutDebugging",
-        "azureiot-telemetrysimulator": "StartWithoutDebugging"
+        "iot-telemetry-simulator": "StartWithoutDebugging"
       }
     }
   }
