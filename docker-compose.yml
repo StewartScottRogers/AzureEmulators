@@ -36,11 +36,11 @@ services:
       - azure_storage_emulator_data:/data
 
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:10000/devstoreaccount1?comp=list"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 15s
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:10000/devstoreaccount1?comp=list"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
 
   ###########################################################################
   # 2. Service Bus Emulator  (preview)
@@ -50,7 +50,8 @@ services:
     image: mcr.microsoft.com/azure-messaging/servicebus-emulator:latest
     container_name: azure-servic-bus-emulator
     depends_on:
-      - azure-sql-edge-store-emulator
+      azure-sql-edge-store-emulator:
+        condition: service_healthy
     restart: unless-stopped
 
     environment:
@@ -67,11 +68,11 @@ services:
       - azure_servic_bus_emulator_logs:/home/app/EmulatorLogs
 
     healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:5300/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5300/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
 
   # Companion SQL Edge store (internal only)
   azure-sql-edge-store-emulator:
@@ -87,6 +88,13 @@ services:
       - azure_sql_edge_store_emulator_data:/var/opt/mssql     # durable queue metadata
     expose:
       - "1433"   # only to sibling containers; no host port mapped
+
+    healthcheck:
+      test: ["CMD", "/opt/mssql-tools/bin/sqlcmd", "-S", "localhost", "-U", "sa", "-P", "${SB_SQL_PASSWORD:-Str0ngPa55w0rd!}", "-Q", "SELECT 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   ###########################################################################
   # 3. Cosmos DB Emulator – NoSQL (Core) API
@@ -131,19 +139,48 @@ services:
 
     environment:
       AZURE_STORAGE_CONNECTION_STRING: "UseDevelopmentStorage=true"
-      SERVICE_BUS_CONNECTION_STRING: "Endpoint=sb://localhost/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=yourkey"
+      SERVICE_BUS_CONNECTION_STRING: "Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;"
       COSMOS_DB_ENDPOINT: "https://localhost:8081"
       COSMOS_DB_KEY: "yourcosmoskey"
 
     ports:
       - "5000:5000"   # REST API
 
-    depends_on:
-      - azure-storage-emulator
-      - azure-servic-bus-emulator
-      - azure-cosmos-database-emulator
-      - azure-sql-edge-store-emulator
 
+    depends_on:
+      azure-storage-emulator:
+        condition: service_started
+      azure-sql-edge-store-emulator:
+        condition: service_started
+      azure-servic-bus-emulator:
+        condition: service_started
+      azure-cosmos-database-emulator:
+        condition: service_started
+
+
+  ###########################################################################
+  # 5. Demo Message Listener Service
+  ###########################################################################
+  demo-message-listener:
+    image: demo-message-listener
+    build:
+      context: ./Demo.MessageListener
+      dockerfile: Dockerfile
+    container_name: demo-message-listener
+    restart: unless-stopped
+
+    environment:
+      SERVICE_BUS_CONNECTION_STRING: "Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;"
+
+    depends_on:
+      azure-storage-emulator:
+        condition: service_started
+      azure-sql-edge-store-emulator:
+        condition: service_started
+      azure-servic-bus-emulator:
+        condition: service_started
+      azure-cosmos-database-emulator:
+        condition: service_started
 
 ###############################################################################
 # Named volumes – keep emulator state between container restarts
