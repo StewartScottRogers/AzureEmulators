@@ -1,4 +1,5 @@
 using Azure.Messaging.ServiceBus;
+using System.Text.Json;
 
 namespace Demo.MessageListener;
 
@@ -8,6 +9,8 @@ public class Worker : BackgroundService
     private readonly IConfiguration _configuration;
     private ServiceBusClient? _serviceBusClient;
     private ServiceBusProcessor? _processor;
+    private const string TopicName = "demo-topic";
+    private const string SubscriptionName = "demo-subscription";
 
     public Worker(ILogger<Worker> logger, IConfiguration configuration)
     {
@@ -25,9 +28,9 @@ public class Worker : BackgroundService
             throw new InvalidOperationException("SERVICE_BUS_CONNECTION_STRING not configured");
         }
 
-        // Create a Service Bus client and processor
+        // Create a Service Bus client and processor for the topic subscription
         _serviceBusClient = new ServiceBusClient(connectionString);
-        _processor = _serviceBusClient.CreateProcessor("demo-queue", new ServiceBusProcessorOptions
+        _processor = _serviceBusClient.CreateProcessor(TopicName, SubscriptionName, new ServiceBusProcessorOptions
         {
             MaxConcurrentCalls = 1,
             AutoCompleteMessages = false
@@ -72,19 +75,27 @@ public class Worker : BackgroundService
 
     private async Task MessageHandler(ProcessMessageEventArgs args)
     {
-        var body = args.Message.Body.ToString();
-        _logger.LogInformation("Received message: {body}", body);
+        try
+        {
+            var body = args.Message.Body.ToString();
+            _logger.LogInformation("Received message: {body}", body);
 
-        // Process the message here
-        // TODO: Add your message processing logic
+            // You can deserialize and process the message here if needed
+            // var message = JsonSerializer.Deserialize<TestMessage>(body);
 
-        // Complete the message
-        await args.CompleteMessageAsync(args.Message);
+            // Complete the message
+            await args.CompleteMessageAsync(args.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing message");
+            await args.DeadLetterMessageAsync(args.Message, "Processing failed", ex.Message);
+        }
     }
 
     private Task ErrorHandler(ProcessErrorEventArgs args)
     {
-        _logger.LogError(args.Exception, "Error processing message");
+        _logger.LogError(args.Exception, "Error handling message");
         return Task.CompletedTask;
     }
 }

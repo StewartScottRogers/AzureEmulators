@@ -1,6 +1,81 @@
-@DemoRestApi_HostAddress = http://localhost:5285
 
-GET {{DemoRestApi_HostAddress}}/weatherforecast/
-Accept: application/json
+@baseUrl = http://localhost:5000
+@contentType = application/json
 
 ###
+# @name sendSimpleMessage
+POST {{baseUrl}}/api/messages/test
+Content-Type: {{contentType}}
+
+{
+    "text": "Hello from Service Bus!"
+}
+
+###
+# @name sendMessageWithTimestamp
+POST {{baseUrl}}/api/messages/test
+Content-Type: {{contentType}}
+
+{
+    "text": "Message with custom timestamp",
+    "timestamp": "2024-01-20T10:30:00Z"
+}
+
+###
+# @name sendLongMessage
+POST {{baseUrl}}/api/messages/test
+Content-Type: {{contentType}}
+
+{
+    "text": "This is a longer message that contains multiple sentences. It can be used to test how the system handles larger payloads. This could represent a more complex business scenario.",
+    "timestamp": "{{$datetime iso8601}}"
+}
+
+###
+# @name sendSpecialCharacters
+POST {{baseUrl}}/api/messages/test
+Content-Type: {{contentType}}
+
+{
+    "text": "Special chars: !@#$%^&*()_+ αινσϊ ρ ??",
+    "timestamp": "{{$datetime iso8601}}"
+}
+
+###
+# @name sendEmptyMessage
+POST {{baseUrl}}/api/messages/test
+Content-Type: {{contentType}}
+
+{
+    "text": "",
+    "timestamp": "{{$datetime iso8601}}"
+}
+
+###
+# @name sendMultilineMessage
+POST {{baseUrl}}/api/messages/test
+Content-Type: {{contentType}}
+
+{
+    "text": "Line 1\nLine 2\nLine 3\nThis message contains multiple lines\nto test newline handling",
+    "timestamp": "{{$datetime iso8601}}"
+}
+
+###
+# @name sendJsonInMessage
+POST {{baseUrl}}/api/messages/test
+Content-Type: {{contentType}}
+
+{
+    "text": "{\"nested\": \"JSON content\", \"number\": 42, \"array\": [1,2,3]}",
+    "timestamp": "{{$datetime iso8601}}"
+}
+
+###
+# @name sendMessageWithoutTimestamp
+POST {{baseUrl}}/api/messages/test
+Content-Type: {{contentType}}
+
+{
+    "text": "Message without explicit timestamp"
+}
