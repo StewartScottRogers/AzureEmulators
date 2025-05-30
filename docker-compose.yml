@@ -68,11 +68,14 @@ services:
       - azure_servic_bus_emulator_logs:/home/app/EmulatorLogs
 
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5300/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:5300/health"]
       interval: 10s
       timeout: 5s
-      retries: 5
-      start_period: 60s
+      retries: 10
+      start_period: 120s
+
+    # NOTE: Topics and subscriptions must be created by application startup logic.
+    # The emulator does not support provisioning these via docker-compose.
 
   # Companion SQL Edge store (internal only)
   azure-sql-edge-store-emulator:
@@ -146,7 +149,7 @@ services:
     environment:
       - ASPNETCORE_URLS=http://0.0.0.0:5000
       - AZURE_STORAGE_CONNECTION_STRING=UseDevelopmentStorage=true
-      - SERVICE_BUS_CONNECTION_STRING=Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;
+      - SERVICE_BUS_CONNECTION_STRING=Endpoint=sb://localhost:5300;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;
       - COSMOS_DB_ENDPOINT=https://localhost:8081
       - COSMOS_DB_KEY=yourcosmoskey
 
@@ -177,7 +180,7 @@ services:
     restart: unless-stopped
 
     environment:
-      - SERVICE_BUS_CONNECTION_STRING=Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;
+      - SERVICE_BUS_CONNECTION_STRING=Endpoint=sb://localhost:5300;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;
 
     depends_on:
       azure-storage-emulator:

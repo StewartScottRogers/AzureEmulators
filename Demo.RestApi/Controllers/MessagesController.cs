@@ -18,13 +18,25 @@ public class MessagesController : ControllerBase
     }
 
     [HttpPost("test")]
-    public async Task<IActionResult> SendTestMessage([FromBody] TestMessage message)
+    public async Task<IActionResult> SendTestMessage([FromBody] TestMessage message, [FromQuery] string? subject = null)
     {
         try
         {
-            await _messagingService.SendMessageAsync(message);
-            _logger.LogInformation("Test message sent successfully: {text}", message.Text);
-            return Ok(new { message = "Message sent successfully" });
+            // Allow subject override via body (optional)
+            var effectiveSubject = subject;
+            if (string.IsNullOrWhiteSpace(effectiveSubject) && !string.IsNullOrWhiteSpace(message.Text))
+            {
+                // If the message text starts with 'subject:', use that as subject
+                if (message.Text.StartsWith("subject:", StringComparison.OrdinalIgnoreCase))
+                {
+                    var parts = message.Text.Split(':', 2);
+                    if (parts.Length == 2)
+                        effectiveSubject = parts[1].Trim();
+                }
+            }
+            await _messagingService.SendMessageAsync(message, effectiveSubject);
+            _logger.LogInformation("Test message sent successfully: {text} | Subject: {subject}", message.Text, effectiveSubject);
+            return Ok(new { message = "Message sent successfully", subject = effectiveSubject });
         }
         catch (Exception ex)
         {

@@ -28,6 +28,17 @@ public class Worker : BackgroundService
             throw new InvalidOperationException("SERVICE_BUS_CONNECTION_STRING not configured");
         }
 
+        // Skip Service Bus setup if using a local connection string
+        if (connectionString.Contains("localhost", StringComparison.OrdinalIgnoreCase) ||
+            connectionString.Contains("UseDevelopmentEmulator=true", StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogWarning("Skipping Service Bus setup: no local emulator is available.");
+            return;
+        }
+
+        // Ensure topic and subscription exist (for emulator/local dev)
+        await EnsureTopicAndSubscriptionExistAsync(connectionString);
+
         // Create a Service Bus client and processor for the topic subscription
         _serviceBusClient = new ServiceBusClient(connectionString);
         _processor = _serviceBusClient.CreateProcessor(TopicName, SubscriptionName, new ServiceBusProcessorOptions
@@ -78,7 +89,8 @@ public class Worker : BackgroundService
         try
         {
             var body = args.Message.Body.ToString();
-            _logger.LogInformation("Received message: {body}", body);
+            var subject = args.Message.Subject;
+            _logger.LogInformation("Received message: {body} | Subject: {subject}", body, subject);
 
             // You can deserialize and process the message here if needed
             // var message = JsonSerializer.Deserialize<TestMessage>(body);
@@ -95,7 +107,21 @@ public class Worker : BackgroundService
 
     private Task ErrorHandler(ProcessErrorEventArgs args)
     {
-        _logger.LogError(args.Exception, "Error handling message");
+        _logger.LogError(args.Exception, "Service Bus error");
         return Task.CompletedTask;
+    }
+
+    private async Task EnsureTopicAndSubscriptionExistAsync(string connectionString)
+    {
+        // Use Azure.Messaging.ServiceBus.Administration for management
+        var adminClient = new Azure.Messaging.ServiceBus.Administration.ServiceBusAdministrationClient(connectionString);
+        if (!await adminClient.TopicExistsAsync(TopicName))
+        {
+            await adminClient.CreateTopicAsync(TopicName);
+        }
+        if (!await adminClient.SubscriptionExistsAsync(TopicName, SubscriptionName))
+        {
+            await adminClient.CreateSubscriptionAsync(TopicName, SubscriptionName);
+        }
     }
 }
