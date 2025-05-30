@@ -5,7 +5,7 @@
       "commandVersion": "1.0",
       "composeLaunchAction": "LaunchBrowser",
       "composeLaunchServiceName": "demo-rest-api",
-      "composeLaunchUrl": "http://0.0.0.0:5000",
+      "composeLaunchUrl": "http://localhost:5000",
       "serviceActions": {
         "demo-rest-api": "StartDebugging",
         "azure-storage-emulator": "StartWithoutDebugging",
