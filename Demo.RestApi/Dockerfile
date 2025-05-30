@@ -2,29 +2,26 @@
 
 # This stage is used when running from VS in fast mode (Default for Debug configuration)
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
-USER $APP_UID
 WORKDIR /app
-EXPOSE 8080
-EXPOSE 8081
-
+EXPOSE 5000
 
 # This stage is used to build the service project
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["DemoRestApi/DemoRestApi.csproj", "DemoRestApi/"]
-RUN dotnet restore "./DemoRestApi/DemoRestApi.csproj"
+COPY ["Demo.RestApi/Demo.RestApi.csproj", "Demo.RestApi/"]
+RUN dotnet restore "./Demo.RestApi/Demo.RestApi.csproj"
 COPY . .
-WORKDIR "/src/DemoRestApi"
-RUN dotnet build "./DemoRestApi.csproj" -c $BUILD_CONFIGURATION -o /app/build
+WORKDIR "/src/Demo.RestApi"
+RUN dotnet build "./Demo.RestApi.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 # This stage is used to publish the service project to be copied to the final stage
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./DemoRestApi.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "./Demo.RestApi.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 # This stage is used in production or when running from VS in regular mode (Default when not using the Debug configuration)
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "DemoRestApi.dll"]
+ENTRYPOINT ["dotnet", "Demo.RestApi.dll"]

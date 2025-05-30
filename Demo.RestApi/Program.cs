@@ -1,23 +1,24 @@
 using Demo.RestApi.Services;
 
-var builder = WebApplication.CreateBuilder(args);
+WebApplicationBuilder webApplicationBuilder = WebApplication.CreateBuilder(args);
+
+// Set the URL to match Docker configuration
+webApplicationBuilder.WebHost.UseUrls("http://0.0.0.0:5000");
 
 // Add services to the container.
-builder.Services.AddControllers();
-builder.Services.AddOpenApi();
+webApplicationBuilder.Services.AddControllers();
+webApplicationBuilder.Services.AddOpenApi();
 
 // Add Service Bus messaging service
-builder.Services.AddSingleton<ServiceBusMessageService>();
+webApplicationBuilder.Services.AddSingleton<ServiceBusMessageService>();
 
-var app = builder.Build();
+WebApplication webApplication = webApplicationBuilder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
+webApplication.MapOpenApi();
 
-app.UseHttpsRedirection();
-app.MapControllers();
+webApplication.UseHttpsRedirection();
 
-app.Run();
+webApplication.MapControllers();
+
+webApplication.Run();
